@@ -1,6 +1,7 @@
 import express from 'express';
 import { getDBStatus, connectDB } from '../db/connection.js';
 import { AIService } from '../services/aiService.js';
+import { OllamaService } from '../services/ollamaService.js';
 import { DiagnosticEngine } from '../services/diagnosticEngine.js';
 import { SessionRepository } from '../models/Session.js';
 import { FALLBACK_TOPICS } from '../data/fallbackBanks.js';
@@ -14,9 +15,9 @@ const activeQuizzes = new Map();
 /**
  * Health & Infrastructure Status Check
  */
-router.get('/health', (req, res) => {
+router.get('/health', async (req, res) => {
   const dbStatus = getDBStatus();
-  const aiStatus = AIService.getEngineStatus();
+  const aiStatus = await AIService.getEngineStatus();
 
   res.json({
     status: 'healthy',
@@ -30,11 +31,33 @@ router.get('/health', (req, res) => {
     },
     aiEngine: {
       available: aiStatus.aiAvailable,
+      activeProvider: aiStatus.activeProvider,
       engineName: aiStatus.engineName,
       model: aiStatus.model,
-      isFallbackMode: aiStatus.isFallbackMode
+      isFallbackMode: aiStatus.isFallbackMode,
+      ollama: aiStatus.ollama,
+      gemini: aiStatus.gemini
     }
   });
+});
+
+/**
+ * Ollama Local Daemon Inspection & Status
+ */
+router.get('/ollama/status', async (req, res) => {
+  try {
+    const status = await OllamaService.checkAvailability();
+    res.json({
+      ...status,
+      instructions: !status.available ? [
+        "1. Download and install Ollama from https://ollama.com",
+        "2. Start the Ollama daemon: `ollama serve` (default at http://localhost:11434)",
+        `3. Pull your target model in a terminal: \`ollama pull ${config.ollamaModel || 'llama3'}\``
+      ] : []
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
@@ -60,7 +83,10 @@ router.get('/topics', (req, res) => {
  */
 router.post('/diagnostic/generate', async (req, res) => {
   try {
-    const { topic = 'Python Memory & Object Mutability', difficulty = 'intermediate', questionCount = 3 } = req.body;
+    const rawTopic = req.body?.topic || req.body?.topicQuery || req.body?.subject || req.body?.title || '';
+    const topic = typeof rawTopic === 'string' && rawTopic.trim().length > 0 ? rawTopic.trim() : 'Python Memory & Object Mutability';
+    const difficulty = (req.body?.difficulty || 'intermediate').toLowerCase().trim();
+    const questionCount = parseInt(req.body?.questionCount, 10) || 3;
 
     const quizData = await AIService.generateDiagnosticQuiz(topic, difficulty, questionCount);
     const quizId = 'quiz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -133,7 +159,9 @@ router.post('/diagnostic/evaluate', async (req, res) => {
       topicSlug: activeQuiz.topicId,
       difficulty: activeQuiz.difficulty,
       engineUsed: activeQuiz.engineUsed,
-      modelName: activeQuiz.isAiGenerated ? config.geminiModel : 'Heuristic-Engine-v1',
+      modelName: activeQuiz.isAiGenerated
+        ? (activeQuiz.engineUsed === 'ollama-ai' ? (activeQuiz.modelName || config.ollamaModel) : config.geminiModel)
+        : 'Heuristic-Engine-v1',
       overallScore: evalResult.overallScore,
       totalQuestions: evalResult.totalQuestions,
       correctCount: evalResult.correctCount,
@@ -221,32 +249,114 @@ router.post('/remediation/verify', async (req, res) => {
  * AI Tutor In-Depth Explanation Service (BUG 2)
  * Provides targeted pedagogical breakdown of student errors
  */
+router.get('/tutor/explain', (req, res) => {
+  res.json({
+    status: 'online',
+    endpoint: '/api/tutor/explain',
+    method: 'POST',
+    description: 'GapGenius AI Tutor Explanation Service'
+  });
+});
+
 router.post('/tutor/explain', async (req, res) => {
   try {
+    const body = req.body || {};
     const {
-      topic,
+      topic = 'Computer Science',
       conceptName,
       questionText,
       selectedOptionText,
       correctOptionText,
       misconceptionLabel,
+      misconceptionExplanation,
+      conceptExplanation,
+      mentalModelFix,
+      remediation,
       code
-    } = req.body;
+    } = body;
 
     const explanation = await AIService.getAITutorExplanation({
       topic,
-      conceptName,
-      questionText,
-      selectedOptionText,
-      correctOptionText,
-      misconceptionLabel,
-      code
+      conceptName: conceptName || topic,
+      questionText: questionText || 'Diagnostic Question',
+      selectedOptionText: selectedOptionText || 'Selected Option',
+      correctOptionText: correctOptionText || 'Correct Option',
+      misconceptionLabel: misconceptionLabel || 'Cognitive Mismatch',
+      misconceptionExplanation: misconceptionExplanation || null,
+      conceptExplanation: conceptExplanation || null,
+      mentalModelFix: mentalModelFix || null,
+      remediation: remediation || null,
+      code: code || null
     });
 
     res.json(explanation);
   } catch (err) {
-    console.error('[API /tutor/explain] Error:', err);
-    res.status(500).json({ error: 'Failed to generate tutor explanation', details: err.message });
+    console.error('[API /tutor/explain] Handled Error:', err);
+    // Never fail with 500; always return a pedagogical breakdown
+    const body = req.body || {};
+    res.json({
+      isAiGenerated: false,
+      engineUsed: 'heuristic-tutor-fallback',
+      engineNotice: 'GapGenius Pedagogical Tutor (Safety Fallback Mode)',
+      conceptName: body.conceptName || body.topic || 'Concept Schema',
+      studentMistake: body.misconceptionExplanation 
+        ? `You selected "${body.selectedOptionText || 'this option'}". ${body.misconceptionExplanation}`
+        : `You selected "${body.selectedOptionText || 'an answer'}". This reflects an intuition trap assuming sequential execution or pass-by-value semantics.`,
+      whyCorrectIsRight: body.conceptExplanation 
+        ? `The correct answer is "${body.correctOptionText || 'the correct option'}". ${body.conceptExplanation}`
+        : `The correct answer "${body.correctOptionText || 'the correct option'}" strictly adheres to the core invariants of ${body.conceptName || body.topic || 'the language'}.`,
+      underlyingMisconception: body.misconceptionLabel || 'State Invariant Misconception',
+      simpleExample: body.code || '// Invariants must be preserved across lifecycle steps.',
+      mentalModelFix: body.mentalModelFix || 'Always trace where variables live in memory and when operations execute.'
+    });
+  }
+});
+
+/**
+ * Interactive Conversational AI Tutor Chat Route
+ * Allows students to ask doubts, request analogies, code examples, or explanations
+ */
+router.get('/tutor/chat', (req, res) => {
+  res.json({
+    status: 'online',
+    endpoint: '/api/tutor/chat',
+    method: 'POST',
+    description: 'GapGenius Interactive AI Tutor Chat Service'
+  });
+});
+
+router.post('/tutor/chat', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const {
+      topic = 'Computer Science',
+      conceptName,
+      questionContext = '',
+      history = [],
+      message
+    } = body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message cannot be empty' });
+    }
+
+    const reply = await AIService.chatWithTutor({
+      topic,
+      conceptName: conceptName || topic,
+      questionContext,
+      history,
+      message: message.trim()
+    });
+
+    res.json(reply);
+  } catch (err) {
+    console.error('[API /tutor/chat] Handled Error:', err);
+    res.json({
+      reply: `💡 **Tutor Guidance:** In programming, state and references must strictly adhere to language invariants. Trace pointer addresses and execution queues carefully!`,
+      isAiGenerated: false,
+      engineUsed: 'heuristic-tutor-fallback',
+      engineNotice: 'GapGenius Pedagogical Tutor (Safety Fallback)'
+    });
   }
 });
 
@@ -289,22 +399,24 @@ router.get('/analytics', async (req, res) => {
 
 /**
  * Dynamic Runtime Configuration Updates
- * Allows judges to input their own Gemini API key or MongoDB connection string
+ * Allows configuring Gemini API key, MongoDB URI, or Ollama local settings
  */
 router.post('/config/update', async (req, res) => {
   try {
-    const { geminiApiKey, mongoUri } = req.body;
+    const { geminiApiKey, mongoUri, mongoDbName, ollamaHost, ollamaModel, aiProvider } = req.body;
 
-    updateRuntimeConfig({ geminiApiKey, mongoUri });
+    updateRuntimeConfig({ geminiApiKey, mongoUri, mongoDbName, ollamaHost, ollamaModel, aiProvider });
 
     if (mongoUri) {
       await connectDB();
     }
 
+    const aiStatus = await AIService.getEngineStatus();
+
     res.json({
       message: 'Runtime configuration updated successfully',
       dbStatus: getDBStatus(),
-      aiStatus: AIService.getEngineStatus()
+      aiStatus
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update configuration', details: err.message });

@@ -5,7 +5,7 @@ const SessionSchema = new mongoose.Schema({
   topic: { type: String, required: true },
   topicSlug: { type: String },
   difficulty: { type: String, default: 'intermediate' },
-  engineUsed: { type: String, enum: ['gemini-ai', 'curated-diagnostic-bank', 'topic-aware-fallback'], required: true },
+  engineUsed: { type: String, enum: ['gemini-ai', 'ollama-ai', 'curated-diagnostic-bank', 'topic-aware-fallback'], required: true },
   modelName: { type: String },
   overallScore: { type: Number, required: true },
   totalQuestions: { type: Number, required: true },

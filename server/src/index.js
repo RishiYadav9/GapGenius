@@ -13,12 +13,29 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Middleware
+// Bulletproof Cross-Origin Resource Sharing (CORS) Configuration
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: true, // Reflects the requesting origin (e.g., localhost:3000, 5173, 127.0.0.1)
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
 }));
+
+// Explicit preflight handler for all routes
+app.options('*', cors());
+
+// Redundant CORS header fallback for full browser safety
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -85,13 +102,19 @@ const startServer = async () => {
   // Attempt DB connection (non-blocking fallback)
   await connectDB();
 
-  const aiStatus = AIService.getEngineStatus();
+  const aiStatus = await AIService.getEngineStatus();
   console.log(`[AI Engine] ${aiStatus.engineName} (Model: ${aiStatus.model})`);
 
-  app.listen(config.port, () => {
+  return app.listen(config.port, () => {
     console.log(`[Server] GapGenius Backend listening on http://localhost:${config.port}`);
-    console.log(`[Status] MongoDB: ${getDBStatus().mode} | AI: ${aiStatus.isFallbackMode ? 'Curated Bank (Fallback)' : 'Gemini AI'}`);
+    console.log(`[Status] MongoDB: ${getDBStatus().mode} | AI: ${aiStatus.isFallbackMode ? 'Curated Bank (Fallback)' : (aiStatus.activeProvider === 'ollama' ? 'Ollama AI' : 'Gemini AI')}`);
   });
 };
 
-startServer();
+// Start automatically if run directly
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  startServer();
+}
+
+export { app, startServer };
+export default app;

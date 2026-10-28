@@ -25,6 +25,9 @@ export const config = {
   mongoDbName: process.env.MONGODB_DB_NAME || 'gapgenius',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+  ollamaHost: process.env.OLLAMA_HOST || 'http://localhost:11434',
+  ollamaModel: process.env.OLLAMA_MODEL || 'llama3',
+  aiProvider: process.env.AI_PROVIDER || 'ollama',
 };
 
 // Runtime dynamic config updates (e.g. if user updates keys from UI)
@@ -40,5 +43,14 @@ export const updateRuntimeConfig = (newConfig) => {
   }
   if (newConfig.geminiModel !== undefined) {
     config.geminiModel = newConfig.geminiModel;
+  }
+  if (newConfig.ollamaHost !== undefined) {
+    config.ollamaHost = newConfig.ollamaHost;
+  }
+  if (newConfig.ollamaModel !== undefined) {
+    config.ollamaModel = newConfig.ollamaModel;
+  }
+  if (newConfig.aiProvider !== undefined) {
+    config.aiProvider = newConfig.aiProvider;
   }
 };

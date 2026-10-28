@@ -170,9 +170,9 @@ export default function App() {
       {/* Error alert */}
       {errorMessage && (
         <div className="max-w-4xl mx-auto mt-4 px-4 w-full">
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-sm">
-            <span>{errorMessage}</span>
-            <button onClick={() => setErrorMessage(null)} className="font-bold underline ml-2">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between shadow-sm">
+            <span className="font-medium">{errorMessage}</span>
+            <button onClick={() => setErrorMessage(null)} className="font-semibold underline ml-3 text-rose-900">
               Dismiss
             </button>
           </div>
@@ -241,10 +241,12 @@ export default function App() {
       />
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span className="font-medium text-slate-600">GapGenius — Built for Hackathon Excellence</span>
-          <span className="font-mono text-[11px] text-slate-400">Find the gap. Fix the gap.</span>
+          <span className="font-medium text-slate-600">GapGenius — AI-Powered Personalized Diagnostic Engine</span>
+          <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
+            Find the gap. Fix the gap.
+          </span>
         </div>
       </footer>
     </div>

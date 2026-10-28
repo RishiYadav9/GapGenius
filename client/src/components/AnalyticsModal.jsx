@@ -56,47 +56,47 @@ export default function AnalyticsModal({ isOpen, onClose }) {
             <>
               {/* Stat Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center shadow-sm">
-                  <div className="text-xl font-black text-slate-900">{data?.totalAttempts || 0}</div>
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Total Attempts</div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center shadow-sm">
+                  <div className="text-2xl font-extrabold text-slate-900">{data?.totalAttempts || 0}</div>
+                  <div className="text-xs font-medium text-slate-500 mt-1">Attempts</div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-center shadow-sm">
-                  <div className="text-xl font-black text-rose-600">{data?.totalGapsFound || 0}</div>
-                  <div className="text-[10px] font-bold uppercase text-rose-700">Gaps Isolated</div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center shadow-sm">
+                  <div className="text-2xl font-extrabold text-slate-900">{data?.totalGapsFound || 0}</div>
+                  <div className="text-xs font-medium text-slate-500 mt-1">Gaps Found</div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center shadow-sm">
-                  <div className="text-xl font-black text-emerald-600">{data?.totalGapsFixed || 0}</div>
-                  <div className="text-[10px] font-bold uppercase text-emerald-700">Gaps Fixed</div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center shadow-sm">
+                  <div className="text-2xl font-extrabold text-emerald-600">{data?.totalGapsFixed || 0}</div>
+                  <div className="text-xs font-medium text-slate-500 mt-1">Gaps Fixed</div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-center shadow-sm">
-                  <div className="text-xl font-black text-indigo-600">{data?.fixRate || 0}%</div>
-                  <div className="text-[10px] font-bold uppercase text-indigo-700">Remediation Rate</div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center shadow-sm">
+                  <div className="text-2xl font-extrabold text-indigo-600">{data?.fixRate || 0}%</div>
+                  <div className="text-xs font-medium text-slate-500 mt-1">Repair Rate</div>
                 </div>
               </div>
 
               {/* Dunning-Kruger Insight */}
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                <Brain className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <div className="font-bold text-amber-900 mb-0.5">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                <Brain className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <div className="font-bold text-slate-900 mb-1">
                     {data?.dangerousMisconceptionsCaught || 0} False Confidence Traps Defused
                   </div>
-                  <p className="text-amber-800 leading-relaxed">
-                    Students who answered incorrectly with 100% confidence were steered away from persistent cognitive blindspots before final exams.
+                  <p className="text-slate-600 leading-relaxed font-normal">
+                    Students who answered incorrectly with high confidence were diagnosed and steered away from persistent cognitive blindspots.
                   </p>
                 </div>
               </div>
 
               {/* Persistence storage source */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs text-slate-600">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-sm text-slate-600">
                 <span className="flex items-center gap-1.5 font-medium">
-                  <Database className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Active Persistence Backend:</span>
+                  <Database className="w-4 h-4 text-slate-500" />
+                  <span>Storage Backend:</span>
                 </span>
-                <span className="font-bold text-slate-900">{data?.storageBackend || 'Local Session Vault'}</span>
+                <span className="font-semibold text-slate-900">{data?.storageBackend || 'Local Vault'}</span>
               </div>
             </>
           )}
