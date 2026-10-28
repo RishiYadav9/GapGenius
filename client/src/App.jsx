@@ -156,7 +156,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
       <Header
         systemHealth={systemHealth}
@@ -170,7 +170,7 @@ export default function App() {
       {/* Error alert */}
       {errorMessage && (
         <div className="max-w-4xl mx-auto mt-4 px-4 w-full">
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-sm">
             <span>{errorMessage}</span>
             <button onClick={() => setErrorMessage(null)} className="font-bold underline ml-2">
               Dismiss
@@ -241,10 +241,10 @@ export default function App() {
       />
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>GapGenius — Built for Hackathon Excellence</span>
-          <span className="font-mono text-[11px] text-slate-600">Find the gap. Fix the gap.</span>
+          <span className="font-medium text-slate-600">GapGenius — Built for Hackathon Excellence</span>
+          <span className="font-mono text-[11px] text-slate-400">Find the gap. Fix the gap.</span>
         </div>
       </footer>
     </div>

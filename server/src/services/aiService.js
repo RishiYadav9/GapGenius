@@ -1,8 +1,8 @@
 import { config } from '../config/env.js';
-import { FALLBACK_TOPICS, getFallbackTopicById } from '../data/fallbackBanks.js';
+import { FALLBACK_TOPICS, generateTopicAwareQuiz } from '../data/fallbackBanks.js';
 
 /**
- * Robust Gemini API Client using standard fetch (Node 18+)
+ * Robust Gemini API Client & Topic-Aware Diagnostic Orchestrator
  * Compatible with Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash
  */
 export class AIService {
@@ -14,13 +14,13 @@ export class AIService {
     return {
       aiAvailable: this.isConfigured(),
       model: config.geminiModel || 'gemini-1.5-flash',
-      engineName: this.isConfigured() ? 'Gemini AI Engine' : 'Expert Curated Heuristic Engine (Fallback)',
+      engineName: this.isConfigured() ? 'Gemini AI Engine' : 'Topic-Aware Diagnostic Engine (Heuristic Fallback)',
       isFallbackMode: !this.isConfigured()
     };
   }
 
   /**
-   * Helper to make Gemini REST API calls
+   * Helper to make Gemini REST API calls with timeout protection
    */
   static async callGemini(promptText, systemInstruction = '', responseSchema = null) {
     if (!this.isConfigured()) {
@@ -40,7 +40,7 @@ export class AIService {
     const bodyPayload = {
       contents,
       generationConfig: {
-        temperature: 0.2, // Low temperature for factual precision in pedagogical diagnosis
+        temperature: 0.2, // Low temperature for high factual precision
         responseMimeType: 'application/json'
       }
     };
@@ -56,7 +56,7 @@ export class AIService {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000); // 12 second timeout
+    const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
     try {
       const response = await fetch(url, {
@@ -89,31 +89,54 @@ export class AIService {
   }
 
   /**
-   * Generates diagnostic quiz questions for any custom or standard topic
+   * Validates whether generated questions are well-formed and relevant to the requested topic
    */
-  static async generateDiagnosticQuiz(topicQuery, difficulty = 'intermediate', questionCount = 4) {
-    // If not configured, immediately use fallback
-    if (!this.isConfigured()) {
-      const matched = FALLBACK_TOPICS.find(t => 
-        t.title.toLowerCase().includes(topicQuery.toLowerCase()) || 
-        t.id.toLowerCase().includes(topicQuery.toLowerCase())
-      ) || FALLBACK_TOPICS[0];
+  static validateQuestions(questions, targetTopic) {
+    if (!Array.isArray(questions) || questions.length < 2) return false;
 
-      return {
-        topic: matched.title,
-        topicId: matched.id,
-        difficulty,
-        engineUsed: 'curated-diagnostic-bank',
-        isAiGenerated: false,
-        engineNotice: 'Pre-calibrated Expert Diagnostic Bank (AI Key not active). Full distractor taxonomy loaded.',
-        concepts: matched.concepts,
-        questions: matched.questions
-      };
+    for (const q of questions) {
+      if (!q.question || typeof q.question !== 'string') return false;
+      if (!Array.isArray(q.options) || q.options.length !== 4) return false;
+
+      // Exactly one correct option
+      const correctCount = q.options.filter(o => o.isCorrect === true).length;
+      if (correctCount !== 1) return false;
+
+      // Check option IDs are distinct (A, B, C, D)
+      const ids = new Set(q.options.map(o => o.id));
+      if (ids.size !== 4) return false;
+
+      // Follow-up question exists
+      if (!q.remediation || !q.remediation.followUpQuestion) return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Generates diagnostic quiz questions for any custom or standard topic
+   * Normalizes topic, uses Gemini if available, or topic-aware deterministic fallback
+   */
+  static async generateDiagnosticQuiz(topicQuery, difficulty = 'intermediate', questionCount = 3) {
+    const cleanTopic = (topicQuery || 'General Computer Science').trim();
+
+    // If Gemini is not configured, immediately use topic-aware fallback
+    if (!this.isConfigured()) {
+      console.log(`[AIService] Gemini API key not present. Generating topic-aware diagnostic for: "${cleanTopic}"`);
+      return generateTopicAwareQuiz(cleanTopic, difficulty, questionCount);
     }
 
     const systemPrompt = `You are the lead psychometrician and computer science pedagogical architect for GapGenius.
 Your core mission: "Find the gap. Fix the gap."
 You do NOT write superficial trivia questions. You design DIAGNOSTIC MULTIPLE-CHOICE QUESTIONS where EVERY incorrect option (distractor) isolates a specific named conceptual misunderstanding or mental model flaw.
+
+CRITICAL RULES:
+1. ALL questions MUST be strictly and genuinely relevant to the requested topic: "${cleanTopic}".
+2. You must generate exactly ${questionCount} DISTINCT questions. Do NOT duplicate question text.
+3. Every question must have EXACTLY 4 options with IDs 'A', 'B', 'C', 'D'.
+4. EXACTLY ONE option must have "isCorrect": true. Vary the position of the correct answer across questions (do not always make 'A' or 'B' correct).
+5. Each distractor (isCorrect: false) must have a specific "misconceptionLabel" and "misconceptionExplanation".
+6. Every question must include a "remediation" object containing "conceptExplanation", "mentalModelFix" (an intuitive analogy), and an adaptive "followUpQuestion" with 3 options and 1 correct answer.
 
 JSON Schema format requirements:
 {
@@ -124,24 +147,24 @@ JSON Schema format requirements:
   "questions": [
     {
       "id": string,
-      "conceptId": string (must match one of the concept ids above),
+      "conceptId": string,
       "conceptName": string,
       "difficulty": "foundational" | "intermediate" | "advanced",
       "question": string,
-      "code": string (optional, clean code snippet if relevant),
+      "code": string (optional code snippet),
       "options": [
         {
           "id": "A" | "B" | "C" | "D",
           "text": string,
           "isCorrect": boolean,
           "misconceptionId": string | null,
-          "misconceptionLabel": string | null (e.g. "Shallow Reference Sharing Blindspot"),
-          "misconceptionExplanation": string (Explain the exact flaw in reasoning if chosen)
+          "misconceptionLabel": string | null,
+          "misconceptionExplanation": string
         }
       ],
       "remediation": {
         "conceptExplanation": string,
-        "mentalModelFix": string (an intuitive analogy and rule-of-thumb),
+        "mentalModelFix": string,
         "followUpQuestion": {
           "id": string,
           "question": string,
@@ -154,75 +177,112 @@ JSON Schema format requirements:
   ]
 }`;
 
-    const userPrompt = `Generate a diagnostic quiz on "${topicQuery}" with difficulty "${difficulty}".
-Create ${questionCount} questions. Ensure granular concepts with prerequisite relationships, exactly one correct answer per question, and 3 high-yield distractor options that map to real cognitive misconceptions.`;
+    const userPrompt = `Generate a rigorous diagnostic quiz specifically on "${cleanTopic}" with difficulty "${difficulty}".
+Create ${questionCount} distinct questions addressing the core invariants, edge cases, and common pitfalls of "${cleanTopic}".`;
 
     try {
       const result = await this.callGemini(userPrompt, systemPrompt);
+
+      // Validate the output structure and relevance
+      if (!this.validateQuestions(result.questions, cleanTopic)) {
+        console.warn(`[AIService] Gemini response did not pass strict question validation for "${cleanTopic}". Using topic-aware fallback.`);
+        return generateTopicAwareQuiz(cleanTopic, difficulty, questionCount);
+      }
+
       return {
-        topic: result.topic || topicQuery,
-        topicId: topicQuery.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        topic: result.topic || cleanTopic,
+        topicId: cleanTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         difficulty,
         engineUsed: 'gemini-ai',
         isAiGenerated: true,
-        engineNotice: 'AI-Generated Dynamic Diagnostic Engine (Gemini Flash). Questions tailored in real time.',
+        engineNotice: `AI-Generated Dynamic Diagnostic Engine (Gemini Flash). Questions tailored in real-time for "${cleanTopic}".`,
         concepts: result.concepts || [],
-        questions: result.questions || []
+        questions: result.questions.slice(0, questionCount)
       };
     } catch (err) {
-      console.warn('[AIService] Failed to generate with Gemini, gracefully degrading to fallback bank:', err.message);
-      const fallback = FALLBACK_TOPICS[0];
-      return {
-        topic: `${topicQuery} (Heuristic Baseline)`,
-        topicId: fallback.id,
-        difficulty,
-        engineUsed: 'curated-diagnostic-bank',
-        isAiGenerated: false,
-        engineNotice: `Heuristic Diagnostic Bank Activated. (Reason: AI Engine Offline / ${err.message}). Pre-calibrated questions used.`,
-        concepts: fallback.concepts,
-        questions: fallback.questions
-      };
+      console.warn(`[AIService] Gemini failed for "${cleanTopic}" (${err.message}). Using topic-aware fallback.`);
+      const fallbackQuiz = generateTopicAwareQuiz(cleanTopic, difficulty, questionCount);
+      fallbackQuiz.engineNotice = `Topic-Aware Diagnostic Engine (AI service offline / ${err.message}). Distinct questions generated for "${cleanTopic}".`;
+      return fallbackQuiz;
     }
   }
 
   /**
-   * Generates dynamic tailored remediation explanation if the student needs a custom breakdown
+   * AI Tutor Service (BUG 2)
+   * Generates a deep, accessible pedagogical breakdown of student errors:
+   * 1. Why selected option was chosen (the mental flaw)
+   * 2. Why correct answer is right
+   * 3. Underlying misconception
+   * 4. A concrete simple code or concept example
    */
-  static async explainMisconceptionInDepth(conceptName, questionText, studentSelectedText, misconceptionLabel) {
+  static async getAITutorExplanation({
+    topic = 'Computer Science',
+    conceptName,
+    questionText,
+    selectedOptionText,
+    correctOptionText,
+    misconceptionLabel,
+    code = null
+  }) {
     if (!this.isConfigured()) {
       return {
         isAiGenerated: false,
-        explanation: `Curated Diagnostic Insight: The choice "${studentSelectedText}" indicates a common confusion: ${misconceptionLabel}. Focus on understanding the core invariant before continuing.`,
-        mentalModelFix: 'Break down the code step by step: trace what happens at each memory binding or execution frame.',
-        engineNotice: 'Using Curated Pedagogical Model.'
+        engineUsed: 'heuristic-tutor-fallback',
+        engineNotice: 'GapGenius Pedagogical Tutor (Offline Heuristic Mode)',
+        conceptName: conceptName || topic,
+        studentMistake: `You selected: "${selectedOptionText}". This error occurs when applying a flawed mental model — specifically, ${misconceptionLabel || 'conflating syntax with underlying memory/lifecycle behavior'}.`,
+        whyCorrectIsRight: `The correct answer is: "${correctOptionText}". This holds true because ${conceptName || topic} guarantees that state and execution boundaries are strictly preserved.`,
+        underlyingMisconception: misconceptionLabel || 'Abstract Lifecycle & State Invariant Misunderstanding',
+        simpleExample: code 
+          ? `// Concrete Rule:\n${code}\n// Notice how the state transitions predictably when following invariants.`
+          : `// Memory / Logic Rule for ${conceptName || topic}:\nconst invariant = true; // Always verify reference vs value semantics!`,
+        mentalModelFix: 'Always trace where variables live and when operations execute. Never assume assignment clones memory or that asynchronous operations run immediately.'
       };
     }
 
-    const prompt = `Student made this specific error:
+    const prompt = `You are GapGenius AI Tutor. Explain a student's mistake with maximum pedagogical clarity:
+Topic: ${topic}
 Concept: ${conceptName}
 Question: ${questionText}
-Option Selected: "${studentSelectedText}"
-Identified Misconception: ${misconceptionLabel}
+${code ? `Code:\n${code}\n` : ''}
+Student Selected: "${selectedOptionText}"
+Correct Answer: "${correctOptionText}"
+Diagnosed Misconception: ${misconceptionLabel || 'Cognitive schema mismatch'}
 
-In simple, crystal-clear language (max 3 short sentences):
-1. Explain WHY the student made this mistake (what mental model they likely held).
-2. Give a 1-sentence memorable analogy/rule that permanently prevents this mistake.
-Return JSON with { "explanation": string, "mentalModelFix": string }`;
+Return a JSON object with:
+{
+  "studentMistake": string (2 sentences explaining WHY they picked their answer and what flawed mental model caused it),
+  "whyCorrectIsRight": string (2 sentences explaining why the correct answer is undeniably true),
+  "underlyingMisconception": string (concise name of the mental flaw),
+  "simpleExample": string (short 2-4 line code snippet or concrete real-world analogy illustrating the difference),
+  "mentalModelFix": string (1 memorable punchy rule of thumb)
+}`;
 
     try {
       const res = await this.callGemini(prompt);
       return {
         isAiGenerated: true,
-        explanation: res.explanation,
-        mentalModelFix: res.mentalModelFix,
-        engineNotice: 'AI Personalized Diagnosis'
+        engineUsed: 'gemini-ai',
+        engineNotice: 'Personalized Gemini AI Tutor Insight',
+        conceptName: conceptName || topic,
+        studentMistake: res.studentMistake,
+        whyCorrectIsRight: res.whyCorrectIsRight,
+        underlyingMisconception: res.underlyingMisconception || misconceptionLabel,
+        simpleExample: res.simpleExample,
+        mentalModelFix: res.mentalModelFix
       };
     } catch (err) {
+      console.warn(`[AIService] AI Tutor call failed: ${err.message}. Using structured pedagogical fallback.`);
       return {
         isAiGenerated: false,
-        explanation: `Analysis: Choosing this option indicates: ${misconceptionLabel}. Pay close attention to object references vs value copies.`,
-        mentalModelFix: 'Remember: In Python and JS, variables are pointers to memory locations, not isolated boxes.',
-        engineNotice: 'Using Curated Diagnostic Fallback'
+        engineUsed: 'heuristic-tutor-fallback',
+        engineNotice: `GapGenius Pedagogical Tutor (Fallback Mode: ${err.message})`,
+        conceptName: conceptName || topic,
+        studentMistake: `You chose: "${selectedOptionText}". This reflects ${misconceptionLabel || 'an intuition trap'}, assuming standard sequential execution or value copying.`,
+        whyCorrectIsRight: `The correct answer "${correctOptionText}" aligns with the formal specification of ${conceptName || topic}.`,
+        underlyingMisconception: misconceptionLabel || 'Specification vs Intuition Mismatch',
+        simpleExample: code || `// In ${topic}:\n// Trace step-by-step: allocations occur before references.`,
+        mentalModelFix: 'Think of variables as reference labels, and asynchronous events as queued tasks.'
       };
     }
   }

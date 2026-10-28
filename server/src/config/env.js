@@ -1,12 +1,22 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from server directory
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Robustly locate and load .env from server dir, root dir, or cwd
+const serverEnvPath = path.resolve(__dirname, '../../.env');
+const rootEnvPath = path.resolve(__dirname, '../../../.env');
+
+if (fs.existsSync(serverEnvPath)) {
+  dotenv.config({ path: serverEnvPath });
+} else if (fs.existsSync(rootEnvPath)) {
+  dotenv.config({ path: rootEnvPath });
+} else {
+  dotenv.config();
+}
 
 export const config = {
   port: process.env.PORT || 5000,

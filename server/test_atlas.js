@@ -95,8 +95,9 @@ const runTest = async () => {
     await mongoose.disconnect();
     process.exit(0);
   } catch (err) {
+    const sanitizedError = (err.message || String(err)).replace(/:([^@]+)@/g, ':****@');
     console.error('\n❌ MongoDB Atlas Verification Failed:');
-    console.error(err.message);
+    console.error(sanitizedError);
     if (mongoose.connection.readyState !== 0) {
       await mongoose.disconnect();
     }

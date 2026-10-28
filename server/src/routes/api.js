@@ -218,6 +218,39 @@ router.post('/remediation/verify', async (req, res) => {
 });
 
 /**
+ * AI Tutor In-Depth Explanation Service (BUG 2)
+ * Provides targeted pedagogical breakdown of student errors
+ */
+router.post('/tutor/explain', async (req, res) => {
+  try {
+    const {
+      topic,
+      conceptName,
+      questionText,
+      selectedOptionText,
+      correctOptionText,
+      misconceptionLabel,
+      code
+    } = req.body;
+
+    const explanation = await AIService.getAITutorExplanation({
+      topic,
+      conceptName,
+      questionText,
+      selectedOptionText,
+      correctOptionText,
+      misconceptionLabel,
+      code
+    });
+
+    res.json(explanation);
+  } catch (err) {
+    console.error('[API /tutor/explain] Error:', err);
+    res.status(500).json({ error: 'Failed to generate tutor explanation', details: err.message });
+  }
+});
+
+/**
  * Session History
  */
 router.get('/sessions', async (req, res) => {

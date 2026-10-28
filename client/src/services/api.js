@@ -50,6 +50,16 @@ export const api = {
     return await res.json();
   },
 
+  async getTutorExplanation(data) {
+    const res = await fetch(`${API_BASE}/tutor/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to fetch tutor explanation');
+    return await res.json();
+  },
+
   async getSessions() {
     const res = await fetch(`${API_BASE}/sessions`);
     if (!res.ok) throw new Error('Failed to fetch session history');

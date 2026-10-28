@@ -3,7 +3,6 @@ import { HelpCircle, CheckCircle2, ChevronRight, AlertCircle, ShieldAlert, Cpu }
 
 export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  // Store user selections: Map of questionId -> { selectedOptionId, confidence: 'low'|'medium'|'high' }
   const [answers, setAnswers] = useState({});
 
   const currentQ = quiz.questions[currentIndex];
@@ -44,7 +43,6 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
   };
 
   const handleSubmit = () => {
-    // Format submission payload
     const submissions = quiz.questions.map(q => ({
       questionId: q.id,
       selectedOptionId: answers[q.id]?.selectedOptionId || null,
@@ -54,58 +52,55 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
     onSubmitAnswers(submissions);
   };
 
-  const answeredCount = Object.values(answers).filter(a => a.selectedOptionId).length;
-  const isAllAnswered = answeredCount === total;
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
       {/* Quiz Header & Notice */}
       <div className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+          <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
             {quiz.topic}
           </span>
-          <span className="text-xs font-medium text-slate-400">
+          <span className="text-xs font-semibold text-slate-500">
             Question {currentIndex + 1} of {total}
           </span>
         </div>
 
         {/* Engine Notice Banner */}
-        <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs text-slate-400 mb-4">
+        <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between text-xs text-slate-600 mb-4">
           <div className="flex items-center gap-2">
-            <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{quiz.engineNotice || 'Diagnostic engine active'}</span>
+            <Cpu className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span className="font-medium">{quiz.engineNotice || 'Diagnostic engine active'}</span>
           </div>
-          <span className="text-[11px] font-mono uppercase bg-slate-800 px-2 py-0.5 rounded text-slate-300">
+          <span className="text-[11px] font-mono uppercase bg-slate-100 px-2 py-0.5 rounded text-slate-700 font-bold">
             {quiz.difficulty}
           </span>
         </div>
 
         {/* Progress bar */}
-        <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden shadow-inner">
           <div
-            className="bg-gradient-to-r from-indigo-500 to-cyan-400 h-1.5 transition-all duration-300"
+            className="bg-gradient-to-r from-indigo-600 to-teal-500 h-2 transition-all duration-300"
             style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Main Question Card */}
-      <div className="glass-panel rounded-2xl p-6 sm:p-8 border border-slate-800 mb-6 shadow-xl">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-md mb-6">
         {/* Concept Tag */}
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs font-medium mb-4">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold mb-4">
           <span>Target Concept:</span>
-          <strong className="text-white">{currentQ.conceptName}</strong>
+          <strong className="text-slate-900">{currentQ.conceptName}</strong>
         </div>
 
         {/* Question Text */}
-        <h2 className="text-base sm:text-lg font-semibold text-slate-100 leading-snug mb-4">
+        <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug mb-4">
           {currentQ.question}
         </h2>
 
-        {/* Code Snippet Box (if provided) */}
+        {/* Code Snippet Box */}
         {currentQ.code && (
-          <div className="mb-6 rounded-xl bg-slate-950 p-4 border border-slate-800/80 font-mono text-xs sm:text-sm text-indigo-200 overflow-x-auto shadow-inner leading-relaxed">
+          <div className="mb-6 rounded-xl bg-slate-900 p-4 border border-slate-800 font-mono text-xs sm:text-sm text-indigo-200 overflow-x-auto shadow-inner leading-relaxed">
             <pre className="code-font whitespace-pre">{currentQ.code}</pre>
           </div>
         )}
@@ -120,15 +115,15 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
                 onClick={() => handleSelectOption(opt.id)}
                 className={`p-4 rounded-xl border text-sm cursor-pointer transition-all flex items-start gap-3 ${
                   isSelected
-                    ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg shadow-indigo-500/10'
-                    : 'bg-slate-900/60 border-slate-800/80 text-slate-300 hover:border-slate-700 hover:bg-slate-800/50'
+                    ? 'bg-indigo-50 border-indigo-600 text-indigo-950 ring-1 ring-indigo-600 shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-800 hover:border-indigo-300 hover:bg-slate-50/60'
                 }`}
               >
                 <div
                   className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
                     isSelected
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-slate-800 text-slate-400'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
                   }`}
                 >
                   {opt.id}
@@ -141,21 +136,21 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
           })}
         </div>
 
-        {/* Metacognitive Calibration Selector (Key Hackathon Innovation) */}
-        <div className="pt-6 border-t border-slate-800/80">
+        {/* Metacognitive Calibration Selector */}
+        <div className="pt-6 border-t border-slate-200">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-amber-600" />
               <span>Metacognitive Calibration — How confident are you?</span>
             </span>
-            <span className="text-[11px] text-slate-500">Separates guessing from true mental mastery</span>
+            <span className="text-[11px] font-medium text-slate-500">Separates guessing from true mastery</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2.5">
             {[
-              { id: 'low', label: 'Guessing', desc: 'Unsure / 50-50 hunch', color: 'border-slate-700' },
-              { id: 'medium', label: 'Somewhat Sure', desc: 'Reasonable intuition', color: 'border-slate-700' },
-              { id: 'high', label: '100% Confident', desc: 'Can explain the mechanism', color: 'border-indigo-500' }
+              { id: 'low', label: 'Guessing', desc: 'Unsure / 50-50 hunch' },
+              { id: 'medium', label: 'Somewhat Sure', desc: 'Reasonable intuition' },
+              { id: 'high', label: '100% Confident', desc: 'Can explain the mechanism' }
             ].map((lvl) => {
               const isSelected = currentAnswer.confidence === lvl.id;
               return (
@@ -163,14 +158,14 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
                   key={lvl.id}
                   type="button"
                   onClick={() => handleSetConfidence(lvl.id)}
-                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                  className={`p-3 rounded-xl border text-left transition-all ${
                     isSelected
-                      ? 'bg-indigo-500/15 border-indigo-500 text-white shadow-md shadow-indigo-500/10'
-                      : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-indigo-50 border-indigo-600 text-indigo-950 ring-1 ring-indigo-600 shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <div className="text-xs font-bold leading-tight">{lvl.label}</div>
-                  <div className="text-[10px] text-slate-400 hidden sm:block mt-0.5">{lvl.desc}</div>
+                  <div className="text-[10px] text-slate-500 hidden sm:block mt-0.5">{lvl.desc}</div>
                 </button>
               );
             })}
@@ -183,7 +178,7 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
         <button
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+          className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 disabled:opacity-40 transition-colors"
         >
           Previous
         </button>
@@ -197,10 +192,10 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
                 onClick={() => setCurrentIndex(idx)}
                 className={`w-3 h-3 rounded-full cursor-pointer transition-all ${
                   idx === currentIndex
-                    ? 'ring-2 ring-indigo-400 bg-indigo-500'
+                    ? 'ring-2 ring-indigo-600 bg-indigo-600'
                     : hasAnswer
-                    ? 'bg-slate-600'
-                    : 'bg-slate-800'
+                    ? 'bg-slate-400'
+                    : 'bg-slate-200'
                 }`}
                 title={`Question ${idx + 1}`}
               />
@@ -212,10 +207,10 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !currentAnswer.selectedOptionId}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-400 hover:to-pink-400 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 active:scale-95"
+            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 active:scale-95"
           >
             {isSubmitting ? (
-              <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <span>Diagnose My Gaps</span>
@@ -227,7 +222,7 @@ export default function DiagnosticQuiz({ quiz, onSubmitAnswers, isSubmitting }) 
           <button
             onClick={handleNext}
             disabled={!currentAnswer.selectedOptionId}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1.5"
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
           >
             <span>Next Question</span>
             <ChevronRight className="w-4 h-4" />

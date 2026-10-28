@@ -103,7 +103,8 @@ const testSessionPersistence = async () => {
     await mongoose.disconnect();
     process.exit(0);
   } catch (err) {
-    console.error('Test Failed:', err);
+    const sanitizedError = (err.message || String(err)).replace(/:([^@]+)@/g, ':****@');
+    console.error('Test Failed:', sanitizedError);
     if (mongoose.connection.readyState !== 0) {
       await mongoose.disconnect();
     }
