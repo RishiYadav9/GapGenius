@@ -91,7 +91,8 @@ export const connectDB = async () => {
   try {
     console.log('[DB] Attempting connection to MongoDB Atlas...');
     await mongoose.connect(config.mongoUri, {
-      serverSelectionTimeoutMS: 5000, // Do not hang indefinitely
+      dbName: config.mongoDbName || 'gapgenius',
+      serverSelectionTimeoutMS: 8000, // 8 second timeout
     });
 
     dbStatus = {
